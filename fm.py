@@ -1,9 +1,10 @@
 import os
-from os import listdir, remove
+from os import listdir, remove, makedirs
 from os.path import join, exists, splitext
 from shutil import move, copy2
-from tkinter import filedialog, messagebox, Tk, Listbox, Button, Scrollbar, Label, Text, Frame, PhotoImage, Toplevel, StringVar, END
+from tkinter import filedialog, messagebox, Tk, Listbox, Button, Scrollbar, Label, Text, Frame, PhotoImage, StringVar, END
 from tkinter import font as tkfont
+from tkinter import simpledialog
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -28,6 +29,7 @@ document_extensions = [".doc", ".pdf", ".xls", ".ppt", ".txt"]
 # For cut/copy and paste functionality
 clipboard_file = None
 clipboard_action = None
+auto_move_enabled = True
 
 # Function to move file to a destination directory
 def move_file(src_path, dest_dir):
@@ -65,22 +67,37 @@ def refresh_file_list():
 
 # Automatically move file to its correct destination folder based on extension
 def auto_move_file(entry):
+    global auto_move_enabled
+    if not auto_move_enabled:
+        return  # Skip auto-move if disabled
+
     filename = os.path.basename(entry)
-    ext = os.path.splitext(filename)[1].lower()
-    if ext in image_extensions:
-        move_file(entry, dest_dir_image)
-    elif ext in video_extensions:
-        move_file(entry, dest_dir_video)
-    elif ext in audio_extensions:
-        move_file(entry, dest_dir_music)
-    elif ext in document_extensions:
-        move_file(entry, dest_dir_documents)
-    else:
-        log_action(f"File type not supported for auto move: {filename}")
+    ext = splitext(filename)[1].lower()
+
+    # Check if file is already in one of the destination directories
+    if os.path.dirname(entry) in [dest_dir_image, dest_dir_video, dest_dir_music, dest_dir_documents]:
+        log_action(f"Skipped auto-moving '{filename}', already in the destination folder.")
+        return
+
+    # Proceed with auto-moving only if the file is directly in the source_dir
+    if os.path.dirname(entry) == source_dir:
+        if ext in image_extensions:
+            move_file(entry, dest_dir_image)
+        elif ext in video_extensions:
+            move_file(entry, dest_dir_video)
+        elif ext in audio_extensions:
+            move_file(entry, dest_dir_music)
+        elif ext in document_extensions:
+            move_file(entry, dest_dir_documents)
+        else:
+            log_action(f"File type not supported for auto move: {filename}")
 
 # Watchdog handler for automatic file movements
 class MoverHandler(FileSystemEventHandler):
     def on_modified(self, event):
+        if event.is_directory:
+            return  # Ignore directory changes
+
         refresh_file_list()
         with os.scandir(source_dir) as entries:
             for entry in entries:
@@ -103,17 +120,38 @@ def copy_selected_file():
     clipboard_action = "copy"
     log_action(f"Copied selected: {selected_file}")
 
-# Function to paste the file to a selected destination
+# Function to paste the file to the current folder (source_dir)
 def paste_file():
-    global clipboard_file, clipboard_action
+    global clipboard_file, clipboard_action, auto_move_enabled
     if clipboard_file and clipboard_action:
-        dest_dir = filedialog.askdirectory(title="Select destination folder")
-        if clipboard_action == "cut":
-            move_file(clipboard_file, dest_dir)
-        elif clipboard_action == "copy":
-            copy_file(clipboard_file, dest_dir)
-        clipboard_file = None
-        clipboard_action = None
+        try:
+            auto_move_enabled = False  # Disable auto-move during paste
+
+            filename = os.path.basename(clipboard_file)
+            dest_path = join(source_dir, filename)  # Paste in the current directory
+
+            if exists(dest_path):
+                log_action(f"File '{filename}' already exists in the current folder.")
+                return
+
+            if clipboard_action == "cut":
+                move(clipboard_file, dest_path)  # Move file to current directory
+                log_action(f"Moved '{filename}' to '{source_dir}'")
+            elif clipboard_action == "copy":
+                copy2(clipboard_file, dest_path)  # Copy file to current directory
+                log_action(f"Copied '{filename}' to '{source_dir}'")
+
+            # Clear clipboard after paste
+            clipboard_file = None
+            clipboard_action = None
+
+            refresh_file_list()  # Update the file list after pasting
+        except Exception as e:
+            log_action(f"Error pasting file: {e}")
+        finally:
+            auto_move_enabled = True  # Re-enable auto-move after paste
+    else:
+        log_action("No file selected for paste.")
 
 # Function to delete a selected file
 def delete_selected_file():
@@ -152,11 +190,23 @@ def go_back():
         refresh_file_list()
         log_action(f"Returned to folder: {parent_dir}")
 
+# Function to add a new subfolder
+def add_subfolder():
+    new_folder_name = simpledialog.askstring("New Folder", "Enter the name of the new folder:")
+    if new_folder_name:
+        new_folder_path = join(source_dir, new_folder_name)
+        if not exists(new_folder_path):
+            makedirs(new_folder_path)
+            log_action(f"Created new folder: {new_folder_name}")
+            refresh_file_list()
+        else:
+            log_action(f"Folder '{new_folder_name}' already exists.")
+
 # Start the file observer for automatic file management
 def start_observer():
     event_handler = MoverHandler()
     observer = Observer()
-    observer.schedule(event_handler, source_dir, recursive=True)
+    observer.schedule(event_handler, source_dir, recursive=True)  # Recursive monitoring
     observer.start()
 
 # GUI Initialization
@@ -201,6 +251,7 @@ copy_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/copy.pn
 paste_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/paste.png")
 delete_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/delete.png")
 back_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/back.png")
+new_folder_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/new_folder.png")
 
 # Buttons for actions
 Button(action_frame, image=cut_icon, command=cut_selected_file, bg=button_color).grid(row=0, column=0, padx=5)
@@ -208,6 +259,7 @@ Button(action_frame, image=copy_icon, command=copy_selected_file, bg=button_colo
 Button(action_frame, image=paste_icon, command=paste_file, bg=button_color).grid(row=0, column=2, padx=5)
 Button(action_frame, image=delete_icon, command=delete_selected_file, bg=button_color).grid(row=0, column=3, padx=5)
 Button(action_frame, image=back_icon, command=go_back, bg=button_color).grid(row=0, column=4, padx=5)
+Button(action_frame, image=new_folder_icon, command=add_subfolder, bg=button_color).grid(row=0, column=5, padx=5)
 
 # Text area for logs
 log_text = Text(root, height=10, width=70, font=default_font, bg="#f0f0f0")
