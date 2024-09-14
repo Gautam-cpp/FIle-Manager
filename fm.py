@@ -168,9 +168,8 @@ root.geometry("600x500")
 default_font = tkfont.Font(family="Arial", size=12)
 
 # Define colors
-bg_color = "#f0f0f0"
-button_color = "#4CAF50"
-button_hover_color = "#45a049"
+bg_color = "#e8e8e8"  # Neutral background color
+button_color = "#d3d3d3"  # Light grey button color
 
 root.configure(bg=bg_color)
 
@@ -196,7 +195,7 @@ scrollbar.config(command=file_list.yview)
 action_frame = Frame(root, bg=bg_color)
 action_frame.pack(pady=10)
 
-# Define button icons
+# Define button icons (neutral design without green)
 cut_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/cut.png")
 copy_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/copy.png")
 paste_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/paste.png")
@@ -204,14 +203,14 @@ delete_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/delet
 back_icon = PhotoImage(file="C:/Users/SUMEDH/Downloads/fileManager2/icon/back.png")
 
 # Buttons for actions
-Button(action_frame, image=cut_icon, command=cut_selected_file, bg=button_color, activebackground=button_hover_color).grid(row=0, column=0, padx=5)
-Button(action_frame, image=copy_icon, command=copy_selected_file, bg=button_color, activebackground=button_hover_color).grid(row=0, column=1, padx=5)
-Button(action_frame, image=paste_icon, command=paste_file, bg=button_color, activebackground=button_hover_color).grid(row=0, column=2, padx=5)
-Button(action_frame, image=delete_icon, command=delete_selected_file, bg=button_color, activebackground=button_hover_color).grid(row=0, column=3, padx=5)
-Button(action_frame, image=back_icon, command=go_back, bg=button_color, activebackground=button_hover_color).grid(row=0, column=4, padx=5)
+Button(action_frame, image=cut_icon, command=cut_selected_file, bg=button_color).grid(row=0, column=0, padx=5)
+Button(action_frame, image=copy_icon, command=copy_selected_file, bg=button_color).grid(row=0, column=1, padx=5)
+Button(action_frame, image=paste_icon, command=paste_file, bg=button_color).grid(row=0, column=2, padx=5)
+Button(action_frame, image=delete_icon, command=delete_selected_file, bg=button_color).grid(row=0, column=3, padx=5)
+Button(action_frame, image=back_icon, command=go_back, bg=button_color).grid(row=0, column=4, padx=5)
 
 # Text area for logs
-log_text = Text(root, height=10, width=70, font=default_font, bg="#e8e8e8")
+log_text = Text(root, height=10, width=70, font=default_font, bg="#f0f0f0")
 log_text.pack(padx=10, pady=10)
 
 # Start the file observer
